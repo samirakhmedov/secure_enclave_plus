@@ -3,7 +3,7 @@ description: >
   Apple Secure Enclave implementation for Flutter. Provides key generation,
   encryption, decryption, signing, and verification using hardware-backed
   elliptic curve keys.
-version: 1.0.0
+version: 1.0.1
 publish_to: none
 
 environment:
