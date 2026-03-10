@@ -233,11 +233,8 @@ class SecureEnclaveCore: SecureEnclaveCoreProtocol {
             )
         }
 
-        guard let secKey = item as? SecKey else {
-            throw SecureEnclaveError.unexpectedKeyType
-        }
-
-        return secKey
+        // After errSecSuccess with kSecReturnRef, the item is always a SecKey.
+        return (item as! SecKey)
     }
 
     // MARK: - Key Status
