@@ -1,31 +1,29 @@
-import 'package:json_annotation/json_annotation.dart';
+import '../constants.dart';
+import 'access_control_option.dart';
 
-import '../constants/access_control_option.dart';
-
-part 'access_control_model.g.dart';
-
-@JsonSerializable()
+/// Configuration for key pair generation in the Secure Enclave.
+///
+/// [tag] is a unique identifier used to store and retrieve the key pair from
+/// the Keychain. [options] defines the access control policy (biometry,
+/// passcode, etc.). [password] is only required when using
+/// [AccessControlOption.applicationPassword].
 class AccessControlModel {
   final String? password;
   final List<AccessControlOption> options;
   final String tag;
 
-  AccessControlModel._({
-    required this.options,
-    required this.tag,
+  AccessControlModel({
     this.password,
+    required this.tag,
+    required this.options,
   });
 
-  factory AccessControlModel({
-    String? password,
-    required String tag,
-    required List<AccessControlOption> options,
-  }) {
-    return AccessControlModel._(password: password, tag: tag, options: options);
+  /// Serializes this model to a map for the platform channel.
+  Map<String, dynamic> toMap() {
+    return {
+      SecureEnclaveArgKey.password: password,
+      SecureEnclaveArgKey.options: options.map((o) => o.name).toList(),
+      SecureEnclaveArgKey.tag: tag,
+    };
   }
-
-  factory AccessControlModel.fromJson(Map<String, dynamic> json) =>
-      _$AccessControlModelFromJson(json);
-
-  Map<String, dynamic> toJson() => _$AccessControlModelToJson(this);
 }

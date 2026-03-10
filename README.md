@@ -1,183 +1,153 @@
-# secure_enclave
+# secure_enclave_plus
 
-Apple Secure Enclave implementaton for Flutter
+A Flutter plugin for Apple's [Secure Enclave](https://support.apple.com/en-ie/guide/security/sec59b0b31ff/web) — a hardware-isolated coprocessor integrated into Apple SoCs that generates and stores cryptographic keys. Private keys created in the Secure Enclave never leave the hardware, even if the application processor is compromised.
 
-# What is a Secure Enclave? 👮
-*The Secure Enclave is a dedicated secure subsystem integrated into Apple systems on chip (SoCs). The Secure Enclave is isolated from the main processor to provide an extra layer of security and is designed to keep sensitive user data secure even when the Application Processor kernel becomes compromised.* https://support.apple.com/en-ie/guide/security/sec59b0b31ff/web
+This package supports iOS. On the iOS Simulator, keys are stored in the software Keychain instead of the Secure Enclave hardware (the simulator lacks a Secure Enclave).
 
-[![](https://help.apple.com/assets/6026E7D7748ADA67B165542D/6026E7DA748ADA67B1655435/en_GB/388d8f7e1d4dd8c22d85c87ca9d01622.png)](https://help.apple.com/assets/6026E7D7748ADA67B165542D/6026E7DA748ADA67B1655435/en_GB/388d8f7e1d4dd8c22d85c87ca9d01622.png)
+## Acknowledgments
 
-# Feature Set ✨
+This package is a fork of [`secure_enclave`](https://pub.dev/packages/secure_enclave) originally created by **Angga Arya Saputra**. The original work provided the foundation for key generation, encryption, decryption, signing, and verification via Apple's Security framework. This fork refactors the codebase for type safety, documentation, and reduced dependencies.
 
-✅ Check tag status 
+## Features
 
-✅ Generate Key Pair 
+| Operation | Description |
+|---|---|
+| `isKeyCreated` | Check whether a key pair exists for a given tag |
+| `generateKeyPair` | Generate an EC P-256 key pair in the Secure Enclave |
+| `getPublicKey` | Retrieve the Base64-encoded public key |
+| `encrypt` | Encrypt a message using the stored key pair |
+| `encryptWithPublicKey` | Encrypt a message using an external Base64-encoded public key |
+| `decrypt` | Decrypt a previously encrypted message |
+| `sign` | Create an ECDSA signature |
+| `verify` | Verify an ECDSA signature |
+| `removeKey` | Remove a key pair from the Secure Enclave |
 
-✅ Get Public Key
+### Access Control Flags
 
-✅ Encrypt
+All flags from [`SecAccessControlCreateFlags`](https://developer.apple.com/documentation/security/secaccesscontrolcreateflags) are supported:
 
-✅ Encrypt with Public Key
+- `devicePasscode` — Require device passcode
+- `biometryAny` — Accept any enrolled biometric
+- `biometryCurrentSet` — Accept only the currently enrolled biometric set
+- `userPresence` — Require user presence (biometry or passcode)
+- `watch` — Allow Apple Watch for authentication
+- `privateKeyUsage` — Restrict access control to private key operations
+- `applicationPassword` — Use a custom application-level password
+- `or` — Combine flags with OR logic
+- `and` — Combine flags with AND logic
 
-✅ Decrypt
+### Algorithms
 
-✅ Sign
+- **Encryption**: ECIES with cofactor Diffie-Hellman, variable IV, X9.63 KDF (SHA-256), and AES-GCM
+- **Signing**: ECDSA over SHA-256 in X9.62 DER format
 
-✅ Verify
+## Usage
 
-✅ Flags ([reference](https://developer.apple.com/documentation/security/secaccesscontrolcreateflags "reference"))
-- devicePasscode ✅
-- biometryAny ✅
-- biometryCurrentSet ✅
-- userPresence ✅
-- watch ✅
-- and ✅
-- or ✅
-- applicationPassword ✅
-- privateKeyUsage ✅
+### Check tag status
 
-🚧 Accessible ([reference](https://developer.apple.com/documentation/security/keychain_services/keychain_items/item_attribute_keys_and_values "reference"))
-- kSecAttrAccessibleWhenUnlockedThisDeviceOnly ✅
-- kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly ⌛
-- kSecAttrAccessibleWhenUnlocked ⌛
-- kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly ⌛
-- kSecAttrAccessibleAfterFirstUnlock ⌛
-
-🚧 Algorithm ([reference](https://developer.apple.com/documentation/security/seckeyalgorithm "reference"))
-- eciesEncryptionCofactorVariableIVX963SHA256AESGCM ✅
-- ecdsaSignatureMessageX962SHA256 ✅
-- others ... ⌛
-
-# How to Use 🚀
-
-📈 **Check tag status :**
 ```dart
-final _secureEnclavePlugin = SecureEnclave();
-final bool status = (await _secureEnclavePlugin.isKeyCreated(tag: 'kota')).value;
+final secureEnclave = SecureEnclavePlus();
+final result = await secureEnclave.isKeyCreated(tag: 'my_key');
+print(result.value); // true or false
 ```
 
-🔑 **Generate Key Pair :**
+### Generate key pair
+
 ```dart
-final _secureEnclavePlugin = SecureEnclave();
+final secureEnclave = SecureEnclavePlus();
 
-ResultModel res = await _secureEnclavePlugin.generateKeyPair(
-    accessControl: AccessControlModel(
-      password: 'jakarta123', // Fill this password if you want custom pop up dialog of .applicationPassword.
-
-      options: [
-        AccessControlOption.applicationPassword,
-        AccessControlOption.privateKeyUsage,
-      ],
-      tag: 'kota',
-    ),
+final result = await secureEnclave.generateKeyPair(
+  accessControl: AccessControlModel(
+    tag: 'my_key',
+    options: [
+      AccessControlOption.privateKeyUsage,
+      AccessControlOption.biometryAny,
+    ],
+  ),
 );
 
-if (res.error != null) {
-	print(res.error!.desc.toString());
+if (result.error != null) {
+  print(result.error!.desc);
 } else {
-	print(res.value);
+  print('Key pair generated: ${result.value}');
 }
- 
 ```
 
+### Generate key pair with application password
 
-📢 **Get Public Key :**
 ```dart
-final _secureEnclavePlugin = SecureEnclave();
-
-ResultModel res = await _secureEnclavePlugin.getPublicKey(tag: 'kota');
-
-if (res.error != null) {
-	print(res.error!.desc.toString());
-} else {
-	print(res.value);
-}
- 
+final result = await secureEnclave.generateKeyPair(
+  accessControl: AccessControlModel(
+    tag: 'my_key',
+    password: 'my_secret_password',
+    options: [
+      AccessControlOption.applicationPassword,
+      AccessControlOption.privateKeyUsage,
+    ],
+  ),
+);
 ```
 
-🔒 **Encrypt :**
-```dart
-final _secureEnclavePlugin = SecureEnclave();
+### Get public key
 
-ResultModel res = await _secureEnclavePlugin.encrypt(
-    message: 'hello jakarta',
-    tag: 'kota',
-    password: 'jakarta123',
+```dart
+final result = await secureEnclave.getPublicKey(tag: 'my_key');
+print(result.value); // Base64-encoded public key
+```
+
+### Encrypt
+
+```dart
+final result = await secureEnclave.encrypt(
+  message: 'Hello, Secure Enclave!',
+  tag: 'my_key',
 );
 
-if (res.error != null) {
-	print(res.error!.desc.toString());
-} else {
-	print(res.value); // Uint8List
+if (result.error == null) {
+  final Uint8List encrypted = result.value!;
 }
 ```
 
-🔐 **Encrypt with Public Key:**
+### Encrypt with external public key
+
 ```dart
-final _secureEnclavePlugin = SecureEnclave();
-
-ResultModel res = await _secureEnclavePlugin.encrypt(
-    message: 'hello jakarta',
-    publicKey: 'T57xZkDf2WPN8BT2Qlg2LiaBEVCRDw1Xq8aWQQfil' // base64 encode
+final result = await secureEnclave.encryptWithPublicKey(
+  message: 'Hello!',
+  publicKey: 'Base64EncodedPublicKeyHere',
 );
-
-if (res.error != null) {
-	print(res.error!.desc.toString());
-} else {
-	print(res.value); // Uint8List
-}
 ```
 
-🔓 **Decrypt :**
+### Decrypt
+
 ```dart
-final _secureEnclavePlugin = SecureEnclave();
-
-ResultModel res = await _secureEnclavePlugin.decrypt(
-    message: Uint8List.fromList(hex.decode('iasjfoiaj2EL3EL')), // hex => Uint8List
-    tag: 'kota',
-    password: 'jakarta123',
+final result = await secureEnclave.decrypt(
+  message: encryptedBytes, // Uint8List
+  tag: 'my_key',
 );
-
-if (res.error != null) {
-	print(res.error!.desc.toString());
-} else {
-	print(res.value);
-}
+print(result.value); // Decrypted string
 ```
 
-🔏 **Sign :**
+### Sign
+
 ```dart
-final _secureEnclavePlugin = SecureEnclave();
-
-ResultModel res = await _secureEnclavePlugin.sign(
-    message: Uint8List.fromList('hello jakarta'.codeUnits), // String => Uint8List
-    tag: 'kota',
-    password: 'jakarta123',
+final result = await secureEnclave.sign(
+  message: Uint8List.fromList('Hello'.codeUnits),
+  tag: 'my_key',
 );
-
-if (res.error != null) {
-	print(res.error!.desc.toString());
-} else {
-	print(res.value);
-}
+print(result.value); // Base64-encoded signature
 ```
 
-✅ **Verify :**
+### Verify
+
 ```dart
-final _secureEnclavePlugin = SecureEnclave();
-
-ResultModel res = await _secureEnclavePlugin.verify(
-	plainText: 'hello jakarta',
-    signature: 'fDrPlGl48R8DPCGNTsAticYfx3RoWPKxEHQ2pHWrBDGk887UwWYGVTSSUj6LciietChBULEs ',
-    tag: 'kota',
-    password: 'jakarta123',
+final result = await secureEnclave.verify(
+  plainText: 'Hello',
+  signature: signatureString, // Base64-encoded
+  tag: 'my_key',
 );
-
-if (res.error != null) {
-	print(res.error!.desc.toString());
-} else {
-	print(res.value);
-}
+print(result.value); // true or false
 ```
 
+## License
 
+BSD 3-Clause License. See [LICENSE](LICENSE) for details.

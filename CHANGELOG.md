@@ -1,3 +1,26 @@
+## 1.0.0
+
+- Fork of `secure_enclave` by Angga Arya Saputra — full refactor
+- Rename package to `secure_enclave_plus`
+- Remove `json_serializable`, `build_runner`, `json_annotation`, `convert` dependencies
+- Remove `plugin_platform_interface` dependency
+- Replace raw string method channels with strongly typed constants
+- Add typed message classes for all platform channel calls
+- Fix force unwraps in Swift (use `guard let` throughout)
+- Fix `isKeyCreated` swallowing all errors (now only returns `false` for missing keys)
+- Replace `CustomError` with structured `SecureEnclaveError` enum
+- Add documentation explaining Secure Enclave internals, algorithms, and keychain queries
+- Remove debug `print()` statements
+- Fix `null` vs empty string password handling
+- Remove unused `Base.swift` protocol and `AccessControlFactory.swift`
+- Remove macOS platform declaration (no native implementation exists)
+- Format all Dart and Swift code
+- Bump minimum iOS to 12.0, Dart SDK to >=3.0.0
+
+## 0.1.2
+
+- Forked from secure_enclave by Angga Arya Saputra
+
 ## 0.1.1
 
 *07-09-2022*
